@@ -5,6 +5,7 @@ import sklearn.metrics
 import numpy as np
 import matplotlib.pyplot as plt
 import keras
+import seaborn as sns
 
 # Load the train data
 
@@ -62,6 +63,13 @@ Test_markings = keras.utils.to_categorical(Test_marking, 3)
 
 #adding the first experimental model it will be changed with more information about dataset
 model = keras.models.Sequential()
+#I use the Input layer as a conv 2D which devides the image to small subsection do search for diferences
+model.add(keras.layers.Conv2D(32,kernel_size=3,activation='relu',padding=1))
+#Adding a second convolutional layer with larger filter to pull more form Image
+model.add(keras.layers.Conv2D(64,kernel_size=3,activation='relu',padding=1))
+
+
+
 #Output layer is 3 because we have 3 classes
 model.add(keras.layers.Dense(3, activation='softmax'))
 
@@ -102,3 +110,7 @@ confusion_matrix = sklearn.metrics.confusion_matrix(Test_marking, prediction_cla
 #Plotting the confusion matrix
 plt.figure()
 sns.heatmap(confusion_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.show()
