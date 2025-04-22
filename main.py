@@ -1,6 +1,7 @@
 import os
 from random import randint
 from sklearn.model_selection import train_test_split
+import sklearn.metrics
 import numpy as np
 import matplotlib.pyplot as plt
 import keras
@@ -60,8 +61,44 @@ marking_validation = keras.utils.to_categorical(marking_validation, 3)
 Test_markings = keras.utils.to_categorical(Test_marking, 3)
 
 #adding the first experimental model it will be changed with more information about dataset
+model = keras.models.Sequential()
+#Output layer is 3 because we have 3 classes
+model.add(keras.layers.Dense(3, activation='softmax'))
 
+# Compileing the model
+model.compile(
+    optimizer='adam',
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+)
 
+model.summary()
+# Train the model
+history = model.fit(
+    data_train,
+    markng_train,
+    epochs=10,
+    batch_size=32,
+    validation_data=(data_validation, marking_validation)
+)
+# Evaluate the model
+test_loss, test_accuracy = model.evaluate(Test_data, Test_markings)
+print('Test accuracy:', test_accuracy)
+print ('Test loss:', test_loss)
+plt.figure()
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.show()
 
-
-
+#plot the confusion matrix
+#Make a Label for the confusion matrix
+labels = ['0', '1', '2']
+#Make a prediction from the model
+prdictions = model.predict(Test_data)
+#Convert predictions to class labels
+prediction_classes = np.argmax(prdictions, axis=1)
+ #Creating a confusion matrix
+confusion_matrix = sklearn.metrics.confusion_matrix(Test_marking, prediction_classes)
+#Plotting the confusion matrix
+plt.figure()
+sns.heatmap(confusion_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
