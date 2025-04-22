@@ -1,8 +1,9 @@
 import os
 from random import randint
-
+from sklearn.model_selection import train_test_split
 import numpy as np
 import matplotlib.pyplot as plt
+import keras
 
 # Load the train data
 
@@ -47,4 +48,20 @@ plt.figure()
 plt.imshow(Test_data[random_index], cmap='gray', interpolation='nearest')
 plt.title('Test Data' + str(random_index))
 plt.show()
+
+#data preprocesing
+#spliting the data into train and validation dataset
+data_train, data_validation, markng_train, marking_validation = train_test_split(
+    Train_data, Train_marking, test_size=0.2, random_state=42, stratify=Train_marking
+)
+#Encodeing marking data ot universal matrix to feed into model.
+markng_train = keras.utils.to_categorical(markng_train, 3)
+marking_validation = keras.utils.to_categorical(marking_validation, 3)
+Test_markings = keras.utils.to_categorical(Test_marking, 3)
+
+#adding the first experimental model it will be changed with more information about dataset
+
+
+
+
 
