@@ -67,9 +67,10 @@ model = keras.models.Sequential()
 model.add(keras.layers.Conv2D(32,kernel_size=3,activation='relu',padding=1))
 #Adding a second convolutional layer with larger filter to pull more form Image
 model.add(keras.layers.Conv2D(64,kernel_size=3,activation='relu',padding=1))
-
-
-
+#Adding a max pooling layer to reduce the complexity of the model
+model.add(keras.layers.MaxPooling2D(pool_size=2))
+#adding a linear layer to make a realtion between the data
+model.add(keras.layers.linear(128, activation='relu'))
 #Output layer is 3 because we have 3 classes
 model.add(keras.layers.Dense(3, activation='softmax'))
 
@@ -79,6 +80,19 @@ model.compile(
     loss='categorical_crossentropy',
     metrics=['accuracy']
 )
+# Adding a learning rate scheduler
+Schaduler = keras.callbacks.LearningRateScheduler(
+    monitor='val_loss',
+    factor=0.1,
+    patience=5,
+    verbose=1,
+)
+# Adding an early stopping callback
+early_stopping = keras.callbacks.EarlyStopping(
+    monitor='val_loss',
+    patience=10,
+    restore_best_weights=True
+)
 
 model.summary()
 # Train the model
@@ -87,7 +101,8 @@ history = model.fit(
     markng_train,
     epochs=10,
     batch_size=32,
-    validation_data=(data_validation, marking_validation)
+    validation_data=(data_validation, marking_validation),
+    callbacks=[Schaduler, early_stopping]
 )
 # Evaluate the model
 test_loss, test_accuracy = model.evaluate(Test_data, Test_markings)
