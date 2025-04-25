@@ -4,9 +4,10 @@ from sklearn.model_selection import train_test_split
 import sklearn.metrics
 import numpy as np
 import matplotlib.pyplot as plt
-import keras
+from tensorflow import keras
 import seaborn as sns
-
+#Disable the floating point in tesorfolw to avoid performance issues
+TF_ENABLE_ONEDNN_OPTS=0
 # Load the train data
 
 folder_path = 'Train'
@@ -51,6 +52,9 @@ plt.imshow(Test_data[random_index], cmap='gray', interpolation='nearest')
 plt.title('Test Data' + str(random_index))
 plt.show()
 
+# Add a channel dimension to the data (grayscale images have 1 channel)
+Train_data = np.expand_dims(Train_data, axis=-1)  
+Test_data = np.expand_dims(Test_data, axis=-1)    
 #data preprocesing
 #spliting the data into train and validation dataset
 data_train, data_validation, markng_train, marking_validation = train_test_split(
@@ -64,13 +68,15 @@ Test_markings = keras.utils.to_categorical(Test_marking, 3)
 #adding the first experimental model it will be changed with more information about dataset
 model = keras.models.Sequential()
 #I use the Input layer as a conv 2D which devides the image to small subsection do search for diferences
-model.add(keras.layers.Conv2D(32,kernel_size=3,activation='relu',padding=1))
+model.add(keras.layers.Conv2D(32,kernel_size=3,activation='relu', input_shape=(72, 48, 1)))
 #Adding a second convolutional layer with larger filter to pull more form Image
-model.add(keras.layers.Conv2D(64,kernel_size=3,activation='relu',padding=1))
+model.add(keras.layers.Conv2D(64,kernel_size=3,activation='relu'))
 #Adding a max pooling layer to reduce the complexity of the model
 model.add(keras.layers.MaxPooling2D(pool_size=2))
+# Flatten the output to feed into Dense layers
+model.add(keras.layers.Flatten())
 #adding a linear layer to make a realtion between the data
-model.add(keras.layers.linear(128, activation='relu'))
+model.add(keras.layers.Dense(128, activation='relu'))
 #Output layer is 3 because we have 3 classes
 model.add(keras.layers.Dense(3, activation='softmax'))
 
@@ -82,10 +88,7 @@ model.compile(
 )
 # Adding a learning rate scheduler
 Schaduler = keras.callbacks.LearningRateScheduler(
-    monitor='val_loss',
-    factor=0.1,
-    patience=5,
-    verbose=1,
+    lambda epoch: 0.001 * (0.1 ** (epoch // 10)),
 )
 # Adding an early stopping callback
 early_stopping = keras.callbacks.EarlyStopping(
