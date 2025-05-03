@@ -1,20 +1,35 @@
 import os
+import csv
 from random import randint
 from sklearn.model_selection import train_test_split
 import sklearn.metrics
+from sklearn.utils import class_weight
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow import keras
 import seaborn as sns
-
+import pandas as pd
 #Disable the floating point in tesorfolw to avoid performance issues
-TF_ENABLE_ONEDNN_OPTS=0
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0' 
 # Load the train data
+def load_npy_folder(folder, id_list):
+    return np.stack([
+        np.load(os.path.join(folder, f"{i}.npy"))
+        for i in id_list
+    ], axis=0)
 
 folder_path = 'Train'
-# Get a list of all files in the folder
-files = os.listdir(folder_path)
-Train_data = [np.load(os.path.join(folder_path, file)) for file in files if file.endswith('.npy')]
+#import of the train data wia the csv file to prevent any issues with lixed up labels
+# read the true labels from the CSV file
+Train_labels = pd.read_csv('label_train.csv',names=['ID', 'target'],header =0)
+# build a filename colum to load the data
+Train_labels['Train'] = Train_labels['ID'].astype(int).astype(str) + '.npy'
+# sort the labels by ID to load the matching data
+Train_labels.rename(columns={'target':'label'}, inplace=True)
+Train_labels.sort_values('ID', inplace=True, ignore_index=True)
+Train_data = load_npy_folder('Train', Train_labels['ID'])
+Train_marking = Train_labels['label'].values
+
 #add data to single array
 Train_data = np.stack(Train_data, axis=0)
 # import the marking for data
@@ -31,14 +46,26 @@ plt.imshow(Train_data[random_index], cmap='gray', interpolation='nearest')
 plt.title('Train Data' + str(random_index))
 plt.show()
 
+# adding a class wight to the data because the dataset is highely unbalanced
+class_weights = class_weight.compute_class_weight(
+    class_weight='balanced',
+    classes=np.unique(Train_marking),
+    y=Train_marking
+)
+class_weights_dict = dict(enumerate(class_weights))
+print("Class weights:", class_weights_dict)
+
 
 # Load the test data
 folder_path = 'Test'
 # Get a list of all files in the folder
-files = os.listdir(folder_path)
-Test_data = [np.load(os.path.join(folder_path, file)) for file in files if file.endswith('.npy')]
-#add data to single array
-Test_data = np.stack(Test_data, axis=0)
+Test_labels = pd.read_csv('test_format.csv', names=['ID', ' label'],header =0)
+Test_labels['Test'] = Test_labels['ID'].astype(int).astype(str) + '.npy'
+# sort the labels by ID to load the matching data and append them to one array
+Test_data = np.stack([
+    np.load(os.path.join('Test', fn))
+    for fn in Test_labels['Test']
+], axis=0)
 # import the marking for data
 Test_marking = np.genfromtxt('test_format.csv', delimiter=',', skip_header=1) 
 #add the marking to one colum array
@@ -118,15 +145,16 @@ model.summary()
 history = model.fit(
     data_train,
     markng_train,
-    epochs=30,
+    epochs=15,
     batch_size=32,
     validation_data=(data_validation, marking_validation),
+    class_weight=class_weights_dict,
     callbacks=[Scheduler, early_stopping]
 )
 # Evaluate the model
-test_loss, test_accuracy = model.evaluate(Test_data, Test_markings)
-print('Test accuracy:', test_accuracy)
-print ('Test loss:', test_loss)
+val_loss, val_acc = model.evaluate(data_validation, marking_validation)
+print('Validation accuracy:', val_acc)
+print('Validation loss:', val_loss)
 plt.figure()
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
@@ -137,8 +165,10 @@ plt.show()
 labels = ['0', '1', '2']
 #Make a prediction from the model
 prdictions = model.predict(Test_data)
+print(prdictions[:25])  
 #Convert predictions to class labels
 prediction_classes = np.argmax(prdictions, axis=1)
+
  #Creating a confusion matrix
 confusion_matrix = sklearn.metrics.confusion_matrix(
     Test_marking, prediction_classes, labels=[0, 1, 2])
@@ -149,3 +179,10 @@ plt.title('Confusion Matrix')
 plt.xlabel('Predicted')
 plt.ylabel('True')
 plt.show()
+
+# adda an export of the predistion to csv file
+with open('submission.csv', 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['ID', 'target'])
+    for i, pred in enumerate(prediction_classes):
+        writer.writerow([i, pred])
