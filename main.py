@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow import keras
 import seaborn as sns
+
 #Disable the floating point in tesorfolw to avoid performance issues
 TF_ENABLE_ONEDNN_OPTS=0
 # Load the train data
@@ -46,6 +47,8 @@ Test_marking = Test_marking[:, 1]
 # print the shape of the data
 print (Test_data.shape)
 print(Test_marking.shape) 
+#ptint a class balance of the data
+print (np.unique(Train_marking, return_counts=True))
 random_index = randint(0, 121) 
 plt.figure()
 plt.imshow(Test_data[random_index], cmap='gray', interpolation='nearest')
@@ -58,7 +61,7 @@ Test_data = np.expand_dims(Test_data, axis=-1)
 #data preprocesing
 #spliting the data into train and validation dataset
 data_train, data_validation, markng_train, marking_validation = train_test_split(
-    Train_data, Train_marking, test_size=0.2, random_state=42, stratify=Train_marking
+    Train_data, Train_marking, test_size=0.3, random_state=42, stratify=Train_marking
 )
 #Encodeing marking data ot universal matrix to feed into model.
 markng_train = keras.utils.to_categorical(markng_train, 3)
@@ -71,24 +74,37 @@ model = keras.models.Sequential()
 model.add(keras.layers.Conv2D(32,kernel_size=3,activation='relu', input_shape=(72, 48, 1)))
 #Adding a second convolutional layer with larger filter to pull more form Image
 model.add(keras.layers.Conv2D(64,kernel_size=3,activation='relu'))
+#Adding a third convolutional layer with larger filter to pull more form Image
+model.add(keras.layers.Conv2D(128,kernel_size=3,activation='relu'))
+#Adding battch normalization to emphasize faster learning winth less overfitting
+model.add(keras.layers.BatchNormalization())
 #Adding a max pooling layer to reduce the complexity of the model
 model.add(keras.layers.MaxPooling2D(pool_size=2))
 # Flatten the output to feed into Dense layers
-model.add(keras.layers.Flatten())
+model.add(keras.layers.GlobalAveragePooling2D())
 #adding a linear layer to make a realtion between the data
 model.add(keras.layers.Dense(128, activation='relu'))
+#adding a second dense layer the learning deeper 
+model.add(keras.layers.Dense(256, activation='relu'))
+#Adding a dropout layer to reduce overfitting
+model.add(keras.layers.Dropout(0.5))
 #Output layer is 3 because we have 3 classes
 model.add(keras.layers.Dense(3, activation='softmax'))
 
 # Compileing the model
+optimizer = keras.optimizers.SGD(learning_rate=0.01, momentum=0.9)
+loss=keras.losses.CategoricalCrossentropy(label_smoothing=0.1)
 model.compile(
-    optimizer='adam',
-    loss='categorical_crossentropy',
+    optimizer=optimizer,
+    loss=loss,
     metrics=['accuracy']
 )
 # Adding a learning rate scheduler
-Schaduler = keras.callbacks.LearningRateScheduler(
-    lambda epoch: 0.001 * (0.1 ** (epoch // 10)),
+Scheduler = keras.callbacks.ReduceLROnPlateau(
+    monitor='val_loss',
+    factor=0.5,
+    patience=5,
+    min_lr=1e-6
 )
 # Adding an early stopping callback
 early_stopping = keras.callbacks.EarlyStopping(
@@ -102,10 +118,10 @@ model.summary()
 history = model.fit(
     data_train,
     markng_train,
-    epochs=10,
+    epochs=30,
     batch_size=32,
     validation_data=(data_validation, marking_validation),
-    callbacks=[Schaduler, early_stopping]
+    callbacks=[Scheduler, early_stopping]
 )
 # Evaluate the model
 test_loss, test_accuracy = model.evaluate(Test_data, Test_markings)
@@ -124,7 +140,8 @@ prdictions = model.predict(Test_data)
 #Convert predictions to class labels
 prediction_classes = np.argmax(prdictions, axis=1)
  #Creating a confusion matrix
-confusion_matrix = sklearn.metrics.confusion_matrix(Test_marking, prediction_classes)
+confusion_matrix = sklearn.metrics.confusion_matrix(
+    Test_marking, prediction_classes, labels=[0, 1, 2])
 #Plotting the confusion matrix
 plt.figure()
 sns.heatmap(confusion_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
