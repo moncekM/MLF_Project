@@ -136,7 +136,7 @@ Scheduler = keras.callbacks.ReduceLROnPlateau(
 # Adding an early stopping callback
 early_stopping = keras.callbacks.EarlyStopping(
     monitor='val_loss',
-    patience=10,
+    patience=25,
     restore_best_weights=True
 )
 
@@ -145,7 +145,7 @@ model.summary()
 history = model.fit(
     data_train,
     markng_train,
-    epochs=15,
+    epochs=30,
     batch_size=32,
     validation_data=(data_validation, marking_validation),
     class_weight=class_weights_dict,
