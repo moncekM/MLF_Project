@@ -101,6 +101,8 @@ model = keras.models.Sequential()
 model.add(keras.layers.Conv2D(32,kernel_size=3,activation='relu', input_shape=(72, 48, 1)))
 #Adding a second convolutional layer with larger filter to pull more form Image
 model.add(keras.layers.Conv2D(64,kernel_size=3,activation='relu'))
+#Adding battch normalization to emphasize faster learning winth less overfitting
+model.add(keras.layers.BatchNormalization())
 #Adding a third convolutional layer with larger filter to pull more form Image
 model.add(keras.layers.Conv2D(128,kernel_size=3,activation='relu'))
 #Adding battch normalization to emphasize faster learning winth less overfitting
@@ -145,7 +147,7 @@ model.summary()
 history = model.fit(
     data_train,
     markng_train,
-    epochs=30,
+    epochs=40,
     batch_size=32,
     validation_data=(data_validation, marking_validation),
     class_weight=class_weights_dict,
